@@ -17,22 +17,21 @@ struct TalkModeGatewayConfigState {
 
 enum TalkModeGatewayConfigParser {
     static func parse(
-        snapshot: ConfigSnapshot,
+        snapshot: ConfigSnapshot?,
         defaultProvider: String,
-        defaultModelIdFallback: String,
         defaultSilenceTimeoutMs: Int,
         envVoice: String?,
         sagVoice: String?,
         envApiKey: String?) -> TalkModeGatewayConfigState
     {
-        let talk = snapshot.config?["talk"]?.dictionaryValue
+        let talk = snapshot?.config?["talk"]?.dictionaryValue
         let selection = TalkConfigParsing.selectProviderConfig(talk, defaultProvider: defaultProvider)
         let activeProvider = selection?.provider ?? defaultProvider
         let activeConfig = selection?.config
         let silenceTimeoutMs = TalkConfigParsing.resolvedSilenceTimeoutMs(
             talk,
             fallback: defaultSilenceTimeoutMs)
-        let ui = snapshot.config?["ui"]?.dictionaryValue
+        let ui = snapshot?.config?["ui"]?.dictionaryValue
         let rawSeam = ui?["seamColor"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let voice = activeConfig?["voiceId"]?.stringValue
         let rawAliases = activeConfig?["voiceAliases"]?.dictionaryValue
@@ -47,7 +46,7 @@ enum TalkModeGatewayConfigParser {
         let resolvedModel: String? = if model?.isEmpty == false {
             model!
         } else if activeProvider == defaultProvider {
-            defaultModelIdFallback
+            PersistentElevenLabsTTSClient.defaultModelId
         } else {
             nil
         }
@@ -80,31 +79,5 @@ enum TalkModeGatewayConfigParser {
             silenceTimeoutMs: silenceTimeoutMs,
             apiKey: resolvedApiKey,
             seamColorHex: rawSeam.isEmpty ? nil : rawSeam)
-    }
-
-    static func fallback(
-        defaultModelIdFallback: String,
-        defaultSilenceTimeoutMs: Int,
-        envVoice: String?,
-        sagVoice: String?,
-        envApiKey: String?) -> TalkModeGatewayConfigState
-    {
-        let resolvedVoice =
-            (envVoice?.isEmpty == false ? envVoice : nil) ??
-            (sagVoice?.isEmpty == false ? sagVoice : nil)
-        let resolvedApiKey = envApiKey?.isEmpty == false ? envApiKey : nil
-
-        return TalkModeGatewayConfigState(
-            activeProvider: "elevenlabs",
-            normalizedPayload: false,
-            missingResolvedPayload: false,
-            voiceId: resolvedVoice,
-            voiceAliases: [:],
-            modelId: defaultModelIdFallback,
-            outputFormat: nil,
-            interruptOnSpeech: true,
-            silenceTimeoutMs: defaultSilenceTimeoutMs,
-            apiKey: resolvedApiKey,
-            seamColorHex: nil)
     }
 }

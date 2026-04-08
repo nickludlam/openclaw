@@ -2,7 +2,7 @@ import Foundation
 import OpenClawKit
 
 struct TalkModeGatewayConfigState {
-    let activeProvider: String
+    let activeProvider: TalkProvider
     let normalizedPayload: Bool
     let missingResolvedPayload: Bool
     let defaultVoiceId: String?
@@ -17,26 +17,25 @@ struct TalkModeGatewayConfigState {
 enum TalkModeGatewayConfigParser {
     static func parse(
         config: [String: Any],
-        defaultProvider: String,
-        defaultModelIdFallback: String,
+        defaultProvider: TalkProvider,
         defaultSilenceTimeoutMs: Int
     ) -> TalkModeGatewayConfigState {
         let talk = TalkConfigParsing.bridgeFoundationDictionary(config["talk"] as? [String: Any])
         let selection = TalkConfigParsing.selectProviderConfig(
             talk,
-            defaultProvider: defaultProvider,
+            defaultProvider: defaultProvider.rawValue,
             allowLegacyFallback: false)
-        let activeProvider = selection?.provider ?? defaultProvider
+        let activeProvider = TalkProvider(rawValue: selection?.provider ?? defaultProvider.rawValue) ?? .elevenLabs
         let activeConfig = selection?.config
-        let defaultVoiceId = activeConfig?["voiceId"]?.stringValue?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let defaultVoiceId = (activeConfig?["voiceId"]?.stringValue ?? activeConfig?["voice"]?.stringValue)?
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let voiceAliases: [String: String]
         if let aliases = activeConfig?["voiceAliases"]?.dictionaryValue {
             var resolved: [String: String] = [:]
             for (key, value) in aliases {
                 guard let id = value.stringValue else { continue }
-                let normalizedKey = key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                let trimmedId = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalizedKey = key.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).lowercased()
+                let trimmedId = id.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
                 guard !normalizedKey.isEmpty, !trimmedId.isEmpty else { continue }
                 resolved[normalizedKey] = trimmedId
             }
@@ -45,10 +44,10 @@ enum TalkModeGatewayConfigParser {
             voiceAliases = [:]
         }
         let model = activeConfig?["modelId"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let defaultModelId = (model?.isEmpty == false) ? model! : defaultModelIdFallback
+        let defaultModelId = (model?.isEmpty == false) ? model! : PersistentElevenLabsTTSClient.defaultModelId
         let defaultOutputFormat = activeConfig?["outputFormat"]?.stringValue?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let rawConfigApiKey = activeConfig?["apiKey"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let rawConfigApiKey = activeConfig?["apiKey"]?.stringValue?.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let interruptOnSpeech = talk?["interruptOnSpeech"]?.boolValue
         let silenceTimeoutMs = TalkConfigParsing.resolvedSilenceTimeoutMs(
             talk,

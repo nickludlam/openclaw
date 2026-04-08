@@ -223,6 +223,8 @@ openclaw nodes invoke --node "iOS Node" --command canvas.snapshot --params '{"ma
 ## Voice wake + talk mode
 
 - Voice wake and talk mode are available in Settings.
+- **ElevenLabs Streaming & Mistral (Voxtral)**: The iOS app supports low-latency, real-time streaming synthesis via both ElevenLabs and Mistral's Voxtral models.
+- **Selection Priority**: Talk Mode prioritizes the provider and model configured in the Gateway's `talk` section in `openclaw.json` (see [Talk Configuration](/gateway/configuration-reference#talk)).
 - iOS may suspend background audio; treat voice features as best-effort when the app is not active.
 
 ## Common errors

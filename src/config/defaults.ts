@@ -5,7 +5,7 @@ import {
   applyProviderConfigDefaultsForConfig,
   normalizeProviderConfigForConfigDefaults,
 } from "./provider-policy.js";
-import { normalizeTalkConfig } from "./talk.js";
+import { normalizeTalkConfig, resolveActiveTalkProviderConfig, resolveTalkApiKey } from "./talk.js";
 import type { ModelDefinitionConfig } from "./types.models.js";
 import type { OpenClawConfig } from "./types.openclaw.js";
 
@@ -130,7 +130,35 @@ export function applySessionDefaults(
 }
 
 export function applyTalkConfigNormalization(config: OpenClawConfig): OpenClawConfig {
-  return normalizeTalkConfig(config);
+  const normalized = normalizeTalkConfig(config);
+  return applyTalkApiKey(normalized);
+}
+
+export function applyTalkApiKey(config: OpenClawConfig): OpenClawConfig {
+  const talk = config.talk;
+  const active = resolveActiveTalkProviderConfig(talk);
+  if (!active) {
+    return config;
+  }
+
+  const providerId = active.provider;
+  const resolved = resolveTalkApiKey(providerId);
+
+  if (!resolved) {
+    return config;
+  }
+
+  const providers = { ...talk?.providers };
+  const providerConfig = { ...providers[providerId], apiKey: resolved };
+  providers[providerId] = providerConfig;
+
+  return {
+    ...config,
+    talk: {
+      ...talk,
+      providers,
+    },
+  };
 }
 
 export function applyModelDefaults(cfg: OpenClawConfig): OpenClawConfig {

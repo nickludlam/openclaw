@@ -1,5 +1,5 @@
 ---
-summary: "Talk mode: continuous speech conversations with ElevenLabs TTS"
+summary: "Talk mode: continuous speech conversations with TTS"
 read_when:
   - Implementing Talk mode on macOS/iOS/Android
   - Changing voice/TTS/interrupt behavior
@@ -52,10 +52,15 @@ Supported keys:
 ```json5
 {
   talk: {
-    voiceId: "elevenlabs_voice_id",
-    modelId: "eleven_v3",
-    outputFormat: "mp3_44100_128",
-    apiKey: "elevenlabs_api_key",
+    provider: "mistral",
+    providers: {
+      elevenlabs: {
+        modelId: "eleven_multilingual_v2",
+        apiKey: { source: "env", id: "ELEVENLABS_API_KEY" },
+        voiceId: "JBFqnCBsd6RMkjVDRZzb",
+        outputFormat: "mp3_44100_128",
+      },
+    },
     silenceTimeoutMs: 1500,
     interruptOnSpeech: true,
   },
@@ -64,12 +69,13 @@ Supported keys:
 
 Defaults:
 
+- `provider`: selects the active provider from `providers` (defaults to first key when `talk.provider` is unset)
 - `interruptOnSpeech`: true
 - `silenceTimeoutMs`: when unset, Talk keeps the platform default pause window before sending the transcript (`700 ms on macOS and Android, 900 ms on iOS`)
-- `voiceId`: falls back to `ELEVENLABS_VOICE_ID` / `SAG_VOICE_ID` (or first ElevenLabs voice when API key is available)
-- `modelId`: defaults to `eleven_v3` when unset
-- `apiKey`: falls back to `ELEVENLABS_API_KEY` (or gateway shell profile if available)
-- `outputFormat`: defaults to `pcm_44100` on macOS/iOS and `pcm_24000` on Android (set `mp3_*` to force MP3 streaming)
+- `providers.*.voiceId`: provider-specific fallback (`MISTRAL_VOICE_ID`, `ELEVENLABS_VOICE_ID`, or `SAG_VOICE_ID`)
+- `providers.*.modelId`: provider-specific model (`eleven_v3` for ElevenLabs, `voxtral-mini-tts-2603` for Mistral)
+- `providers.*.apiKey`: falls back to provider-specific env var (e.g. `MISTRAL_API_KEY`, `ELEVENLABS_API_KEY`)
+- `providers.elevenlabs.outputFormat`: defaults to `pcm_44100` on macOS/iOS and `pcm_24000` on Android (set `mp3_*` to force MP3 streaming)
 
 ## macOS UI
 

@@ -9,12 +9,11 @@ import type {
 import type { OpenClawConfig } from "./types.openclaw.js";
 import { coerceSecretRef } from "./types.secrets.js";
 
+export const LEGACY_TALK_PROVIDER_ID = "elevenlabs";
+export const LEGACY_TALK_API_KEY_ENV = "ELEVENLABS_API_KEY";
+
 function normalizeTalkSecretInput(value: unknown): TalkProviderConfig["apiKey"] | undefined {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  return coerceSecretRef(value) ?? undefined;
+  return normalizeOptionalString(value) ?? coerceSecretRef(value) ?? undefined;
 }
 
 function normalizeSilenceTimeoutMs(value: unknown): number | undefined {
@@ -54,6 +53,14 @@ function normalizeTalkProviderConfig(value: unknown): TalkProviderConfig | undef
       const normalized = normalizeTalkSecretInput(raw);
       if (normalized !== undefined) {
         provider.apiKey = normalized;
+      }
+      continue;
+    }
+    if (key === "voiceId" || key === "voice" || key === "modelId" || key === "outputFormat") {
+      const normalized = normalizeOptionalString(raw);
+      if (normalized) {
+        const targetKey = key === "voice" ? "voiceId" : key;
+        provider[targetKey] = normalized;
       }
       continue;
     }
@@ -188,4 +195,23 @@ export function buildTalkConfigResponse(value: unknown): TalkConfigResponse | un
   }
 
   return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
+export function resolveTalkApiKey(
+  providerId: string | null = null,
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const normalizedProviderId = normalizeOptionalString(providerId)?.toLowerCase();
+
+  // Try provider-specific env var
+  if (normalizedProviderId && normalizedProviderId !== LEGACY_TALK_PROVIDER_ID) {
+    const providerKey = `${normalizedProviderId.toUpperCase()}_API_KEY`;
+    const providerEnvValue = (env[providerKey] ?? "").trim();
+    if (providerEnvValue) {
+      return providerEnvValue;
+    }
+  }
+
+  // Fallback to legacy ElevenLabs keys
+  return (env.ELEVENLABS_API_KEY ?? "").trim() || null;
 }

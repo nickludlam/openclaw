@@ -16,7 +16,6 @@ actor TalkModeRuntime {
 
     private let logger = Logger(subsystem: "ai.openclaw", category: "talk.runtime")
     private let ttsLogger = Logger(subsystem: "ai.openclaw", category: "talk.tts")
-    private static let defaultModelIdFallback = "eleven_v3"
     private static let defaultTalkProvider = "elevenlabs"
     private static let mlxTalkProvider = "mlx"
     private static let systemTalkProvider = "system"
@@ -954,7 +953,6 @@ extension TalkModeRuntime {
             let parsed = TalkModeGatewayConfigParser.parse(
                 snapshot: snap,
                 defaultProvider: Self.defaultTalkProvider,
-                defaultModelIdFallback: Self.defaultModelIdFallback,
                 defaultSilenceTimeoutMs: Self.defaultSilenceTimeoutMs,
                 envVoice: envVoice,
                 sagVoice: sagVoice,
@@ -979,8 +977,9 @@ extension TalkModeRuntime {
             }
             return parsed
         } catch {
-            return TalkModeGatewayConfigParser.fallback(
-                defaultModelIdFallback: Self.defaultModelIdFallback,
+            return TalkModeGatewayConfigParser.parse(
+                snapshot: nil,
+                defaultProvider: Self.defaultTalkProvider,
                 defaultSilenceTimeoutMs: Self.defaultSilenceTimeoutMs,
                 envVoice: envVoice,
                 sagVoice: sagVoice,

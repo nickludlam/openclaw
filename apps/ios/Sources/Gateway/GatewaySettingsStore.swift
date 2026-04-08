@@ -1,5 +1,6 @@
 import Foundation
 import os
+import OpenClawKit
 
 enum GatewaySettingsStore {
     private static let gatewayService = "ai.openclaw.gateway"
@@ -190,8 +191,8 @@ enum GatewaySettingsStore {
         var port: Int?
     }
 
-    static func loadTalkProviderApiKey(provider: String) -> String? {
-        guard let providerId = self.normalizedTalkProviderID(provider) else { return nil }
+    static func loadTalkProviderApiKey(provider: TalkProvider) -> String? {
+        let providerId = provider.rawValue
         let account = self.talkProviderApiKeyAccount(providerId: providerId)
         let value = KeychainStore.loadString(
             service: self.talkService,
@@ -201,8 +202,8 @@ enum GatewaySettingsStore {
         return nil
     }
 
-    static func saveTalkProviderApiKey(_ apiKey: String?, provider: String) {
-        guard let providerId = self.normalizedTalkProviderID(provider) else { return }
+    static func saveTalkProviderApiKey(_ apiKey: String?, provider: TalkProvider) {
+        let providerId = provider.rawValue
         let account = self.talkProviderApiKeyAccount(providerId: providerId)
         let trimmed = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if trimmed.isEmpty {
@@ -381,10 +382,7 @@ enum GatewaySettingsStore {
         self.talkProviderApiKeyAccountPrefix + providerId
     }
 
-    private static func normalizedTalkProviderID(_ provider: String) -> String? {
-        let trimmed = provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return trimmed.isEmpty ? nil : trimmed
-    }
+
 
     private static func ensureStableInstanceID() {
         let defaults = UserDefaults.standard
