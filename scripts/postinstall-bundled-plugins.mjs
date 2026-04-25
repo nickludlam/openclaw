@@ -631,6 +631,33 @@ export function applyBaileysEncryptedStreamFinishHotfix(params = {}) {
   }
 }
 
+function ensureOpenClawWorkspaceLink(pluginDir, repoRoot) {
+  const nodeModulesDir = join(pluginDir, "node_modules");
+  const linkPath = join(nodeModulesDir, "openclaw");
+
+  if (existsSync(linkPath)) {
+    // If it exists, check if it's already a symlink to the repo root.
+    try {
+      if (lstatSync(linkPath).isSymbolicLink()) {
+        const target = readlinkSync(linkPath);
+        if (
+          target === repoRoot ||
+          realpathSync(join(nodeModulesDir, target)) === realpathSync(repoRoot)
+        ) {
+          return;
+        }
+      }
+    } catch {
+      // Fall through to removal and recreation
+    }
+    rmSync(linkPath, { recursive: true, force: true });
+  }
+
+  mkdirSync(nodeModulesDir, { recursive: true });
+  const relativeTarget = relative(nodeModulesDir, repoRoot);
+  symlinkSync(relativeTarget, linkPath, "dir");
+}
+
 function applyBundledPluginRuntimeHotfixes(params = {}) {
   const log = params.log ?? console;
   const baileysResult = applyBaileysEncryptedStreamFinishHotfix(params);
@@ -734,6 +761,22 @@ export function runBundledPluginPostinstall(params = {}) {
     writeFileSync: params.writeFileSync,
     log,
   });
+
+  // Ensure every extension directory with a package.json has the openclaw workspace link.
+  // This handles resolution boundaries for both opted-in extensions and manifestless
+  // extensions like github-copilot when running in isolated Docker environments.
+  if (pathExists(extensionsDir)) {
+    for (const entry of params.readdirSync?.(extensionsDir, { withFileTypes: true }) ??
+      readdirSync(extensionsDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        const pluginDir = join(extensionsDir, entry.name);
+        if (pathExists(join(pluginDir, "package.json"))) {
+          ensureOpenClawWorkspaceLink(pluginDir, packageRoot);
+        }
+      }
+    }
+  }
+
   if (
     !shouldRunBundledPluginPostinstall({
       env,

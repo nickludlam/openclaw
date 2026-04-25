@@ -1164,6 +1164,30 @@ function installPluginRuntimeDeps(params) {
   }
 }
 
+function ensureOpenClawWorkspaceLink(pluginDir, repoRoot) {
+  const nodeModulesDir = path.join(pluginDir, "node_modules");
+  const linkPath = path.join(nodeModulesDir, "openclaw");
+
+  if (fs.existsSync(linkPath)) {
+    // If it exists, check if it's already a symlink to the repo root.
+    try {
+      if (fs.lstatSync(linkPath).isSymbolicLink()) {
+        const target = fs.readlinkSync(linkPath);
+        if (target === repoRoot || path.resolve(nodeModulesDir, target) === repoRoot) {
+          return;
+        }
+      }
+    } catch {
+      // Fall through to removal and recreation
+    }
+    removePathIfExists(linkPath);
+  }
+
+  fs.mkdirSync(nodeModulesDir, { recursive: true });
+  const relativeTarget = path.relative(nodeModulesDir, repoRoot);
+  fs.symlinkSync(relativeTarget, linkPath, "dir");
+}
+
 export function stageBundledPluginRuntimeDeps(params = {}) {
   const repoRoot = params.cwd ?? params.repoRoot ?? process.cwd();
   const installPluginRuntimeDepsImpl =
@@ -1187,6 +1211,7 @@ export function stageBundledPluginRuntimeDeps(params = {}) {
       removePathIfExists(stampPath);
       continue;
     }
+    ensureOpenClawWorkspaceLink(pluginDir, repoRoot);
     const cheapFingerprint = createRuntimeDepsCheapFingerprint(packageJson, pruneConfig, {
       repoRoot,
     });
